@@ -13,7 +13,6 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
-
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
 };
@@ -45,7 +44,76 @@ var saveTasks = function() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
+// reorder tasks by dragging and dropping
+$(".card .list-group").sortable({
+  // allow dragging across lists
+  connectWith: $(".card .list-group"),
+  scroll: false,
+  tolerance: "pointer",
+  helper: "clone",
+  activate: function(event) {
+    console.log("activate", this);
+  },
+  deactivate: function(event) {
+    console.log("deactivate", this);
+  },
+  over: function(event) {
+    console.log("over", event.target);
+  },
+  out: function(event) {
+    console.log("out", event.target);
+  },
+  update: function(event) {
+    // array to store the task data in
+    var tempArr = [];
+    // loop over current set of children in sortable list
+    $(this).children().each(function() {                  // OR
+      var text = $(this)                                  // tempArr.push({
+        .find("p")                                        //  text: $(this)
+        .text()                                           //    .find("p")
+        .trim();                                          //   .text()
+                                                          //   .trim(),
+      var date = $(this)                                  //  date: $(this)
+        .find("span")                                     //   .find("span")
+        .text()                                           //   .text()
+        .trim();                                          //   .trim()
 
+      // save task data to the temp array as an object
+      tempArr.push({
+        text: text,
+        date: date
+      });
+    });
+    // trim down list's ID to match object property
+    var arrName = $(this)
+      .attr("id")
+      .replace("list-", "");
+
+    // update array on tasks object and save
+    tasks[arrName] = tempArr;
+    saveTasks();
+  },
+  stop: function(event) {
+    $(this).removeClass("dropover");
+  }
+});
+
+// allow trash icon to be droped into
+$("#trash").droppable({
+  accept: ".card .list-group-item",
+  tolerance: "touch",
+  drop: function(event, ui) {
+    // remove dragged element from DOM
+    ui.draggable.remove();
+    console.log("drop");
+  },
+  over: function(event, ui) {
+    console.log(ui);
+  },
+  out: function(event, ui) {
+    console.log(ui);
+  }
+});
 
 
 // modal was triggered
@@ -87,15 +155,14 @@ $(".list-group").on("click", "p", function() {
   // get existing description of <p> element
   var text = $(this).text().trim();
   // create new <textarea> input element
-  var textInput = $("<textarea>")
-    .addClass("form-control")
-    .val(text);
+  var textInput = $("<textarea>").addClass("form-control").val(text);
   // swap current description with the edited element
   $(this).replaceWith(textInput);
 
-  // autofocus for "edit mode" (UI)
+  // autofocus new element for "edit mode" (UI)
   textInput.trigger("focus");
 });
+
 // task description was edited/changed & done editing/unfocused
 $(".list-group").on("blur", "textarea", function() {
   // get <textarea>'s current (edited) value/text
@@ -139,8 +206,9 @@ $(".list-group").on("click", "span", function() {
   // automatically focus on new element ("edit mode" UI)
   dateInput.trigger("focus");
 });
+
 // due date was changed/editing field unfocused (done editing)
-$(".list-group").on("blur", "input[type='text']", function() {
+$(".list-group").on("change", "input[type='text']", function() {
   // get current (edited) text
   var date = $(this).val().trim();
 
